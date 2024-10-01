@@ -2,7 +2,7 @@
 name = "classical-music-corpus-clustering"
 version = "0.1.0"
 description = ""
-authors = ["Guilherme Marthe <guilherme.cqmarthe@thoughtworks.com>"]
+authors = ["Guilherme Marthe <gui.marthe@ime.usp.com>"]
 readme = "README.md"
 
 [tool.poetry.dependencies]
