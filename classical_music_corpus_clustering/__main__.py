@@ -55,13 +55,13 @@ def extract_dataframes(corpus: CorpusMD):
     return cdf
 
 
-if __name__ == "__main__":
-
+def main():
     repos = ['mozart_piano_sonatas', 'beethoven_piano_sonatas']
 
     corpora = [CorpusMD(repo, make_destination(repo)) for repo in repos]
 
-    download_corpora(corpora)
+    if not Path('corpus/').exists():
+        download_corpora(corpora)
 
     cdf = pd.concat([extract_dataframes(corpus) for corpus in corpora])
 
@@ -75,3 +75,10 @@ if __name__ == "__main__":
         .unstack()
         .fillna(0)
     )
+
+    return tone_frequency_by_piece
+
+
+
+if __name__ == "__main__":
+    main()
