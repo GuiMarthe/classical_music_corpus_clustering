@@ -1,6 +1,7 @@
 import fsspec
 from pathlib import Path
 import pandas as pd
+import ms3
 
 
 def get_df_by_position_with_name(position, dfs):
@@ -8,14 +9,18 @@ def get_df_by_position_with_name(position, dfs):
     return dfs[key]["expanded"][0][1].assign(piece=key)
 
 
+def download_corpus_harmony(repo: str, destination: Path):
+    fs = fsspec.filesystem("github", org="dcmlab", repo=repo)
+    fs.get(fs.ls("harmonies/"), destination.as_posix())
+    fs.get("metadata.tsv", (destination / "metadata.tsv").as_posix())
+
+
 if __name__ == "__main__":
 
     destination = Path(".") / "corpus"
     destination.mkdir(exist_ok=True, parents=True)
-    fs = fsspec.filesystem("github", org="dcmlab", repo="mozart_piano_sonatas")
-    fs.get(fs.ls("harmonies/"), destination.as_posix())
-    fs.get("metadata.tsv", (destination / "metadata.tsv").as_posix())
 
+    download_corpus_harmony(repo="mozart_piano_sonatas", destination=destination)
     corpus = ms3.Corpus("corpus/")
 
     corpus.parse_tsv()
