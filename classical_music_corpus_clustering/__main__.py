@@ -4,6 +4,7 @@ import pandas as pd
 import ms3
 from dataclasses import dataclass
 from typing import Optional
+from sklearn.decomposition import LatentDirichletAllocation
 
 
 def get_df_by_position_with_name(position, dfs) -> pd.DataFrame:
@@ -24,14 +25,14 @@ def make_destination(repo: str) -> Path:
 
 
 @dataclass
-class CorpusMD():
+class CorpusMD:
     repo: str
     destination: Path
     corpus_ms3 = Optional[ms3.corpus.Corpus]
 
     @property
     def composer(self) -> str:
-        return self.repo.split('_')[0].title()
+        return self.repo.split("_")[0].title()
 
     def get_dataframes(self):
         self.corpus_ms3.parse_tsv()
@@ -55,30 +56,41 @@ def extract_dataframes(corpus: CorpusMD):
     return cdf
 
 
-def main():
-    repos = ['mozart_piano_sonatas', 'beethoven_piano_sonatas']
+def extract_corpora():
+    repos = ["mozart_piano_sonatas", "beethoven_piano_sonatas", "debussy_suite_bergamasque"]
 
     corpora = [CorpusMD(repo, make_destination(repo)) for repo in repos]
 
-    if not Path('corpus/').exists():
+    if not Path("corpus/").exists():
         download_corpora(corpora)
 
     cdf = pd.concat([extract_dataframes(corpus) for corpus in corpora])
+    return cdf
 
-    tone_frequency_by_piece = (
-        cdf.loc[:, "piece composer chord_tones".split()]
-        .set_index("piece composer".split())
-        .chord_tones.explode()
-        .groupby(level=(0, 1))
-        .value_counts()
-        .astype("Int64")
-        .unstack()
-        .fillna(0)
-    )
 
-    return tone_frequency_by_piece
+def build_trigrams(frame, col):
+    trigrams = frame.groupby(level=(0, 1), as_index=False).apply(
+        lambda df: df[col]
+        .str.cat(df.chord.shift(-1), sep="-")
+        .str.cat(df[col].shift(-2), sep="-")
+    ).dropna()
+    return trigrams
 
+
+def freq_top_trigrams():
+    cdf = extract_corpora()
+    chord_sequence = cdf.set_index('composer piece'.split()).loc[:, 'chord'.split()]
+    tri = build_trigrams(chord_sequence, 'chord').reset_index(0, drop=True)
+    top_1200_tri = tri.value_counts(normalize=False).reset_index().head(1200)
+    top_mask = tri.isin(top_1200_tri.chord)
+    by_frequency_by_trigrams = tri[top_mask].groupby(level=(0,1)).value_counts()
+    return by_frequency_by_trigrams
+
+
+def get_lda_labels_prob(X, topics = 10):
+    labels = LatentDirichletAllocation(n_components=topics).fit_transform(X)
+    return pd.DataFrame(labels, index = X.index)
 
 
 if __name__ == "__main__":
-    main()
+    freq_top_trigrams()
